@@ -14,16 +14,52 @@ class Gamelogic:
         self.players = []
         self.current_turn_player = None
         self.current_card_stack = []
-        self.last_play = [] # [play_value, nb_cards, [cards_played], last_play_player]
+        self.last_play = None # Play object
         self.card_template = CARD_TEMPLATE
-        self.classment_template = CLASSMENT_TEMPLATE
+        self.last_player_status = {
+            # players' status at the end of the previous round
+            "Tycoon": None,
+            "Rich": None,
+            "Poor": None,
+            "Beggar": None
+        }
+        self.classment = CLASSMENT_TEMPLATE
+        self.round = 1
 
+    # add a player to the list of players, then start a game if there are 4 players
+    def register_player(self, player):
+        # TO DO: manage registration through discord command
+        if len(self.players) < 4:
+            self.players.append(player)
+
+        self.start_game()
     
+
+    # if there are 4 players, distribute cards randomly to each player,
+    # determine players' turns
     def start_game(self):
         # not yet enough players
         if len(self.players) < 4:
             return
         
+        # setting turns, only at the start
+        if self.round == 1:
+            first_player = random.choice(self.players)
+            players_list = [player for player in self.players
+                            if player != first_player]
+            self.current_turn_player = first_player
+
+            current_player = first_player
+            next_player = None
+            while current_player.next_player is None and len(players_list) > 0:
+                next_player = random.choice(players_list)
+                players_list.remove(next_player)
+                current_player.next_player, next_player.prev_player = next_player, current_player
+
+                current_player = next_player
+
+            current_player.next_player, self.current_turn_player.prev_player = self.current_turn_player, current_player
+
         # distributing cards
         for card in DECK:
             card_distributed = False
@@ -37,56 +73,52 @@ class Gamelogic:
                     player.add_card_to_hand(card)
                     card_distributed = True
 
-        # setting turns
-        first_player = random.choice(self.players)
-        players_list = [player for player in self.players if player != first_player]
-        self.current_turn_player = first_player
-        
-        current_player = first_player
-        next_player = None
-        while current_player.next_player is None and len(players_list) > 0:
-            next_player = random.choice(players_list)
-            players_list.remove(next_player)
-            current_player.next_player, next_player.prev_player = next_player, current_player
+        if self.round > 1:
+            self.redistribute_cards()
 
-            current_player = next_player
-
-        current_player.next_player, self.current_turn_player.prev_player = self.current_turn_player, current_player
-        # test
-        # i = 0
-        # while i < 4:
-        #     i += 1
-        #     print(self.current_turn_player.name)
-        #     self.current_turn_player = self.current_turn_player.next_player
+        self.start_round()
 
 
-    # display hands of players (cards hidden) MAY BE USELESS
-    def display_players_hands(self):
-        for player in self.players:
-            player_hand = [CARD_TEMPLATE for card in player.hand]
-            print(f"{player.name}({player.score}) : {player_hand} ({len(player_hand)})")
+    # TO DO
+    # start a round, end when 3 players finish
+    def start_round(self):
+        end_round = False
+        while not end_round:
+            self.start_turn()
 
 
+    # TO DO
     # manage a full turn
-    def turn_gameplay(self):
+    def start_turn(self):
         end_turn = False
         
         while not end_turn:
-            # directed to self.current_turn_player
+            # TO DO:
+            # direct to self.current_turn_player through discord
             current_play = self.play_cards()
 
             # passed
-            if current_play[0] is None:
-                pass
-                ### TO DO
+            if current_play.value is None:
+                self.current_turn_player = self.current_turn_player.next_player
+                continue
+
+            # 8 turn stop
+            if current_play.value == 8:
+                self.last_play = current_play
+                end_turn = True
+                continue
+
+            # TO DO
 
 
+    # TO DO: discord implementation
     # ask for a player input, check if valid 
-    # then return a new valid play [play_value, nb_cards, [cards_played]]
+    # then return a new valid Play object
     def play_cards(self):
         valid_play = False
 
         while not valid_play:
+            # TO DO: DIRECT TO self.current_turn_player
             play_input = input(
                 "Please input the card(s) you want to play (example: 4S 4C JK1): \n")
             play_input = play_input.upper()
@@ -173,17 +205,89 @@ class Gamelogic:
             while len(input_cards) > 0:
                 card = input_cards.pop()
                 self.current_turn_player.hand.remove(card)
-
         
         play.get_attributes()
         return play
 
+    # return True after a play if the player has emptied their hand
+    # else False
+    def has_emptied_hand(self):
+        player = self.last_play.player
 
-    # add a player to the list of players
-    def register_player(self, player):
-        self.players.append(player)
+        return len(player.hand) == 0
 
-        self.start_game()
+
+    # display hands of players (cards hidden) MAY BE USELESS
+    def display_players_hands(self):
+        for player in self.players:
+            player_hand = [CARD_TEMPLATE for card in player.hand]
+            print(
+                f"{player.name}({player.score}) : {player_hand} ({len(player_hand)})")
+
+
+    # TO DO: discord implementation
+    # depending on players' status at start of round 2 and 3, exchange cards
+    def redistribute_cards(self):
+        for player in self.players:
+            if player.status == "Tycoon":
+                tycoon = player
+            if player.status == "Rich":
+                rich = player
+            if player.status == "Poor":
+                poor = player
+            if player.status == "Beggar":
+                beggar = player
+
+        # TO DO: implement choice through discord
+        # should be async
+        beggar_trade = [beggar.hand.pop() for i in range(2)]
+        poor_trade = poor.hand.pop()
+
+        # tycoon
+        valid_trade_tycoon = False
+        while not valid_trade_tycoon:
+            tycoon_trade_input = input(f"Please choose 2 cards to give (example: 3H 5D):\n")
+            tycoon_trade_cards = tycoon_trade_input.upper().split()
+
+            own_cards = True
+            for card in tycoon_trade_cards:
+                if card not in tycoon.hand:
+                    own_cards = False
+                    break
+            
+            if own_cards:
+                valid_trade_tycoon = True
+            else:
+                print("Selection invalid.")
+
+        for card in tycoon_trade_cards:
+            tycoon.hand.remove(card)
+
+        # rich
+        valid_trade_rich = False
+        while not valid_trade_rich:
+            rich_trade_input = input(
+                f"Please choose 1 card to give (example: 4D):\n")
+            rich_trade_card = rich_trade_input.upper()
+            if rich_trade_card in rich.hand:
+                valid_trade_rich = True
+            else:
+                print("Selected card invalid.")
+
+        rich.hand.remove(rich_trade_card)
+
+        ## trading
+        # TO DO: wait for both trade to be valid before going through the trade
+        if valid_trade_tycoon and valid_trade_rich:
+            for card in beggar_trade:
+                tycoon.add_card_to_hand(card)
+            
+            for card in tycoon_trade_cards:
+                beggar.add_card_to_hand(card)
+
+            rich.add_card_to_hand(poor_trade)
+
+            poor.add_card_to_hand(rich_trade_card)
 
 
 # Used in Gamelogic
@@ -205,6 +309,7 @@ class Player:
         self.next_player = None
         self.prev_player = None
         self.hand = []
+        self.has_finished = False # necessary because hand not empty != finished
         self.status = "Commoner" # Starting status, will change to 
         #"Tycoon" > "Rich" > "Poor" > "Beggar"
         self.score = 0
