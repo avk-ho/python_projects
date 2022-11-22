@@ -1,12 +1,9 @@
 import random
 from assets import *
 
-# Test
-# x = 0
-# for card in DECK:
-#     x += 1
-#     print(f"{card} : {DECK[card]['value']} / {DECK[card]['symbol']}")
-# print(x)
+# Game is 3 Rounds
+# Each Round, players take Turns
+# Each Turn, players make Plays (including passing)
 
 class Gamelogic:
     def __init__(self):
@@ -14,9 +11,8 @@ class Gamelogic:
         self.players = []
         self.current_turn_player = None
         self.current_card_stack = []
-        self.last_play = None # Play object
         self.card_template = CARD_TEMPLATE
-        self.last_player_status = {
+        self.last_players_status = {
             # players' status at the end of the previous round
             "Tycoon": None,
             "Rich": None,
@@ -24,9 +20,10 @@ class Gamelogic:
             "Beggar": None
         }
         self.classment = CLASSMENT_TEMPLATE
+        self.all_rounds = []
         self.round = 1
 
-    # add a player to the list of players, then start a game if there are 4 players
+    ### add a player to the list of players, then start a game if there are 4 players
     def register_player(self, player):
         # TO DO: manage registration through discord command
         if len(self.players) < 4:
@@ -35,8 +32,7 @@ class Gamelogic:
         self.start_game()
     
 
-    # if there are 4 players, distribute cards randomly to each player,
-    # determine players' turns
+    ### if there are 4 players, determines players' turns then start a round
     def start_game(self):
         # not yet enough players
         if len(self.players) < 4:
@@ -60,6 +56,13 @@ class Gamelogic:
 
             current_player.next_player, self.current_turn_player.prev_player = self.current_turn_player, current_player
 
+        # start rounds, stop after round 3
+        while self.round < 4:
+            self.start_round()
+
+
+    ### start a round, end when 3 players finish
+    def start_round(self):
         # distributing cards
         for card in DECK:
             card_distributed = False
@@ -67,54 +70,148 @@ class Gamelogic:
             while not card_distributed:
                 # pick a random player
                 player = random.choice(self.players)
-                
+
                 # checking if player hand is full
                 if len(player.hand) < 14:
                     player.add_card_to_hand(card)
                     card_distributed = True
 
+        # card trading for round 2 & 3
         if self.round > 1:
+            self.current_turn_player = self.last_players_status["Beggar"]
             self.redistribute_cards()
 
-        self.start_round()
+        # round start
+        round = Round(player=self.current_turn_player, num=self.round)
 
-
-    # TO DO
-    # start a round, end when 3 players finish
-    def start_round(self):
         end_round = False
         while not end_round:
-            self.start_turn()
+            turn = self.start_turn(round)
+            round.turns.append(turn)
 
+            # check if 3 players have finished
+            remaining_players = 0
+            last_status = ""
+            for status in round.players_status:
+                if round.players_status[status] is None:
+                    remaining_players += 1
+                    last_status = status
 
-    # TO DO
-    # manage a full turn
-    def start_turn(self):
-        end_turn = False
+            if remaining_players == 1:
+                end_round = True
         
+        # round ending, attributing last remaining status
+        round.players_status[last_status] = self.current_turn_player
+
+        self.last_players_status = round.players_status
+        self.all_rounds.append(round)
+        self.round += 1
+
+        # distributing score (desc order)
+        # and resetting state of players (hand and has_finished)
+        score = 30
+        for status in self.last_players_status:
+            player = self.last_players_status[status]
+            player.hand = []
+            player.has_finished = False
+            player.score += score
+
+            score -= 10
+
+        # display ranking
+        self.display_classment()
+
+
+    # TO DO: Discord implementation
+    ### manage a full turn
+    def start_turn(self, round):
+        turn = Turn(player=self.current_turn_player)
+
+        end_turn = False
         while not end_turn:
+            # all players passed
+            if turn.last_play.player is not None \
+            and turn.last_play.player == self.current_turn_player:
+                end_turn = True
+                continue
+
             # TO DO:
             # direct to self.current_turn_player through discord
-            current_play = self.play_cards()
+            current_play = self.play_cards(turn=turn)
 
             # passed
             if current_play.value is None:
                 self.current_turn_player = self.current_turn_player.next_player
                 continue
 
+            # revolution / counter revolution
+            if current_play.nb == 4:
+                self.revolution = not self.revolution
+
+                if self.revolution:
+                    print("Revolution ! All cards' strength is reversed (excluding Jokers).")
+                else:
+                    print("Counter revolution ! All cards' strength is back to normal.")
+
             # 8 turn stop
             if current_play.value == 8:
-                self.last_play = current_play
                 end_turn = True
-                continue
 
-            # TO DO
+            # joker 3S counter
+            if (turn.last_play.cards[0] == "JK1" or turn.last_play.cards[0]) == "JK2" \
+            and turn.last_play.nb == 1 \
+            and current_play.cards[0] == "3S":
+                end_turn = True
+
+            # player empties hand
+            if turn.has_emptied_hand():
+                current_play.player.has_finished = True
+
+                for status in round.players_status:
+                    if status is None:
+                        round.players_status[status] = current_play.player
+                        current_play.player.status = status
+
+                        # bankruptcy case
+                        if self.round > 1 and status == "Tycoon" \
+                        and self.last_players_status[status] != current_play.player:
+                            round.players_status["Beggar"] = self.last_players_status[status]
+                            self.last_players_status[status].status = "Beggar"
+                            self.last_players_status[status].has_finished = True
+                            
+                            # TO DO:
+                            # send Bankruptcy message through discord
+
+                        break
+
+                # check if 3 players have finished (status already distributed)
+                # if so, finish turn early
+                remaining_players = 0
+                for status in round.players_status:
+                    if round.players_status[status] is None:
+                        remaining_players += 1
+                
+                if remaining_players == 1:
+                    end_turn = True
+
+            
+            turn.plays.append(current_play)
+            turn.last_play = current_play
+
+            self.current_turn_player = self.current_turn_player.next_player
+            # finding the next player
+            while self.current_turn_player.has_finished:
+                self.current_turn_player = self.current_turn_player.next_player
+
+        turn.ending_player = turn.last_play.player
+
+        return turn
 
 
     # TO DO: discord implementation
-    # ask for a player input, check if valid 
-    # then return a new valid Play object
-    def play_cards(self):
+    ### ask for a player input, check if valid 
+    ### then return a new valid Play object
+    def play_cards(self, turn):
         valid_play = False
 
         while not valid_play:
@@ -138,9 +235,10 @@ class Gamelogic:
                 continue
 
             # incorrect number of cards played
-            if len(input_cards) != self.last_play[1]:
+            if turn.last_play is not None \
+            and len(input_cards) != turn.last_play.nb:
                 print(
-                    f"Incorrect number of cards played. {len(input_cards)} instead of {self.last_play[1]}.")
+                    f"Incorrect number of cards played. {len(input_cards)} instead of {turn.last_play.nb]}.")
                 continue
 
 
@@ -175,23 +273,24 @@ class Gamelogic:
             if has_joker and play_value == 0 and not self.revolution:
                 play_value = 20
 
-            # comparing with last play's value
-            if self.revolution:
-                valid_play = play_value < self.last_play[0]
-            else:
-                valid_play = play_value > self.last_play[0]
+            if turn.last_play is not None:
+                # comparing with last play's value
+                if self.revolution:
+                    valid_play = play_value < turn.last_play.value
+                else:
+                    valid_play = play_value > turn.last_play.value
 
-            # joker 3S counter
-            if self.last_play[1] == 1 \
-            and (self.last_play[0] == 0 or self.last_play[0] == 20) \
-            and input_cards[0] == "3S":
-                valid_play = True
+                # joker 3S counter
+                if turn.last_play.nb == 1 \
+                and (turn.last_play.value == 0 or turn.last_play.value == 20) \
+                and input_cards[0] == "3S":
+                    valid_play = True
 
-            ### TO DO: ADD CARD DISPLAY
-            # cards too "weak"
-            if not valid_play:
-                print(
-                    f"Invalid card value played. Last card(s) played: {self.last_play[2]}")
+                ### TO DO: ADD CARD DISPLAY
+                # cards too "weak"
+                if not valid_play:
+                    print(
+                        f"Invalid card value played. Last card(s) played: {turn.last_play.cards}")
         
         play = Play(
             player=self.current_turn_player,
@@ -206,18 +305,12 @@ class Gamelogic:
                 card = input_cards.pop()
                 self.current_turn_player.hand.remove(card)
         
+        # TO DELETE
         play.get_attributes()
         return play
 
-    # return True after a play if the player has emptied their hand
-    # else False
-    def has_emptied_hand(self):
-        player = self.last_play.player
 
-        return len(player.hand) == 0
-
-
-    # display hands of players (cards hidden) MAY BE USELESS
+    ### display hands of players (cards hidden) MAY BE USELESS
     def display_players_hands(self):
         for player in self.players:
             player_hand = [CARD_TEMPLATE for card in player.hand]
@@ -226,7 +319,7 @@ class Gamelogic:
 
 
     # TO DO: discord implementation
-    # depending on players' status at start of round 2 and 3, exchange cards
+    ### depending on players' status at start of round 2 and 3, exchange cards
     def redistribute_cards(self):
         for player in self.players:
             if player.status == "Tycoon":
@@ -290,7 +383,104 @@ class Gamelogic:
             poor.add_card_to_hand(rich_trade_card)
 
 
+    ### return a list of players in ascending scores
+    def get_player_ranking(self):
+        # recursive in-place sorting function
+        def get_player_ranking_helper(player, ranking):
+            if len(ranking) == 0:
+                ranking.append(player)
+
+            else:
+                top_ranking = ranking.pop()
+                if player.score >= top_ranking.score:
+                    ranking.append(top_ranking)
+                    ranking.append(player)
+
+                else:
+                    get_player_ranking_helper(player, ranking)
+                    ranking.append(top_ranking)
+
+        ranking = []
+
+        for player in self.players:
+            get_player_ranking_helper(player, ranking)
+
+        return ranking
+
+
+    ### display up to date classment
+    def display_classment(self):
+        current_classment = self.classment
+        ranking = self.get_player_ranking()
+
+        while len(ranking) > 0:
+            player = ranking.pop()
+
+            if len(ranking) == 3:
+                current_classment = current_classment.replace(
+                    "PLAYER_FIRST", player.name)
+                current_classment = current_classment.replace(
+                    "FIRST_SCORE", player.score)
+
+            elif len(ranking) == 2:
+                current_classment = current_classment.replace(
+                    "PLAYER_SECOND", player.name)
+                current_classment = current_classment.replace(
+                    "SECOND_SCORE", player.score)
+
+            elif len(ranking) == 1:
+                current_classment = current_classment.replace(
+                    "PLAYER_THIRD", player.name)
+                current_classment = current_classment.replace(
+                    "THIRD_SCORE", player.score)
+
+            elif len(ranking) == 0:
+                current_classment = current_classment.replace(
+                    "PLAYER_LAST", player.name)
+                current_classment = current_classment.replace(
+                    "LAST_SCORE", player.score)
+
+        print(current_classment)
+
+
 # Used in Gamelogic
+class Round():
+    def __init__(self, player, num):
+        self.starting_player = player
+        self.number = num
+        self.turns = []
+        self.players_status = {
+            # players' status at the end of this round
+            "Tycoon": None,
+            "Rich": None,
+            "Poor": None,
+            "Beggar": None
+        }
+
+    def get_attributes(self):
+        for attribute, value in self.__dict__.items():
+            print(attribute, '=', value)
+
+
+class Turn():
+    def __init__(self, player):
+        self.starting_player = player
+        self.plays = []
+        self.last_play = None
+        self.ending_player = None
+
+    def get_attributes(self):
+        for attribute, value in self.__dict__.items():
+            print(attribute, '=', value)
+
+    # return True after a play if the player has emptied their hand
+    # else False
+    def has_emptied_hand(self):
+        player = self.last_play.player
+
+        return len(player.hand) == 0
+
+
 class Play():
     def __init__(self, player, value, nb_cards, cards_played):
         self.player = player
@@ -303,6 +493,7 @@ class Play():
             print(attribute, '=', value)
 
 
+###
 class Player:
     def __init__(self, name):
         self.name = name
