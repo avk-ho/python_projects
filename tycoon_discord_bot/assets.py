@@ -10,6 +10,11 @@ CARDS = ["A", "2", "3", "4", "5", "6", "7",
 
 CARD_TEMPLATE = "[ ? ]"
 
+### return a string of a card with a symbol given (string)
+def display_card(symbol):
+    return CARD_TEMPLATE.replace("?", DECK[symbol]["symbol"])
+
+
 CLASSMENT_TEMPLATE = """:first_place: PLAYER_FIRST | FIRST_SCORE
 :second_place: PLAYER_SECOND | SECOND_SCORE
 :third_place: PLAYER_THIRD | THIRD_SCORE
