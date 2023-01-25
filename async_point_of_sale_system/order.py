@@ -133,7 +133,7 @@ class Order:
         return total_price
 
 
-    async def conclude_order(self, inventory, total_price):
+    async def conclude_order(self, total_price):
         if total_price == 0:
             print("The order is empty and has been cancelled.")
             return
@@ -142,7 +142,7 @@ class Order:
             confirm_order = input(f"Would you like to purchase this order for ${total_price} (yes/no)? ")
             if confirm_order == "yes":
                 print("Thank you for your order!")
-                await self.decrement_all_items(inventory)
+                await self.decrement_all_items()
                 break
             elif confirm_order == "no":
                 print("No problem, please come again!")
@@ -254,7 +254,7 @@ class Order:
         self.subtotal += round(price, 2)
 
 
-    async def decrement_all_items(self, inventory):
+    async def decrement_all_items(self):
         tasks = []
 
         for category in self.items.values():
@@ -264,7 +264,7 @@ class Order:
 
                 quantity = item["order_quantity"]
                 for _ in range(quantity):
-                    task = asyncio.create_task(inventory.decrement_stock(id))
+                    task = asyncio.create_task(self.inventory.decrement_stock(id))
                     tasks.append(task)
 
         await asyncio.gather(*tasks)

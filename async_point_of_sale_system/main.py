@@ -63,7 +63,7 @@ async def main():
         order.fill_items(item_status)
 
         total_price = order.calculate_total_order_price()
-        await order.conclude_order(inventory, total_price)
+        await order.conclude_order(total_price)
 
         while True:
             do_new_order = input(
