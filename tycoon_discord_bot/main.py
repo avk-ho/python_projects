@@ -1,10 +1,8 @@
 import discord
 from discord.ext import commands
-from game_logic import *
-from player import *
+from player import Player
+from game_logic import Gamelogic, Round, Turn, Play
 import secret
-
-game = Gamelogic()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -14,4 +12,7 @@ intents.message_content = True
 
 
 
-# bot.run(secret.BOT_TOKEN)
+if __name__ == "__main__":
+    pass
+
+    # bot.run(secret.BOT_TOKEN)

@@ -10,12 +10,14 @@ from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from flask_gravatar import Gravatar
 from functools import wraps
 
+import os
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = SECRET_KEY
 ckeditor = CKEditor(app)
 Bootstrap(app)
 gravatar = Gravatar(app)
-
 
 ##USER AUTHENTICATION
 login_manager = LoginManager()
