@@ -10,5 +10,7 @@ tycoon_discord_bot_original/test.py
 tycoon_discord_bot_original/secret.py
 contact_list/contacts.json
 student_performance/students
+application.py
 applications.json
 .env
+.vscode

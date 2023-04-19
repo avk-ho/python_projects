@@ -107,11 +107,34 @@ def edit_application(applications, id):
             for key, value in application.items():
                 if key in NOT_EDITABLE_VALUES:
                     continue
+                
+                while True:
+                    if key == "interview_date":
+                        new_value = input(f"Current {key}: {value}. Input new {key} (YYYY-MM-DD):")
+                    else:
+                        new_value = input(f"Current {key}: {value}. Input new {key}:")
+                        
+                    if new_value == SKIP_INPUT:
+                        break
 
-                new_value = input(f"Current {key}: {value}. Input new {key}:")
+                    elif key == "interview_date" and new_value != "":
+                        # TO DO: make a check on input to match date
+                        new_value = date.fromisoformat(new_value)
+                        break
+                        
+                    elif key == "priority":
+                        if new_value.isnumeric():
+                            new_value = int(new_value)
+                            if 1 <= new_value <= new_value:
+                                break
+
+                        print("Error, input not a number between 1 and 5.")
+                    else:
+                        break
+
                 if new_value == SKIP_INPUT:
                     continue
-
+                
                 temp_application[key] = new_value
 
     if temp_application is not None:
@@ -135,10 +158,10 @@ def edit_application(applications, id):
         print(f"Error, no application with the id: {id} exists.")
 
 
-# UNFINISHED
 def format_application_short(application):
     formatted_application_str = SHORTENED_APPLICATION
     
+    # Mandatory fields
     formatted_application_str = formatted_application_str.replace("ID_NUM", application["id"])
     formatted_application_str = formatted_application_str.replace("POSITION_NAME", application["position"])
     formatted_application_str = formatted_application_str.replace("COMPANY_NAME", application["company"])
@@ -146,36 +169,63 @@ def format_application_short(application):
     formatted_application_str = formatted_application_str.replace("CURRENT_STATUS", application["status"])
     formatted_application_str = formatted_application_str.replace("CONTACT_ADDRESS", application["contact"])
     
-    # prepare formatting
-    formatted_application_str = formatted_application_str.replace("APPLICATION_DATE", application["application_date"])
-    formatted_application_str = formatted_application_str.replace("INTERVIEW_DATE", application["interview_date"])
-    
-    return formatted_application_str
 
-# UNFINISHED
+    application_date_str = date.isoformat(application["application_date"])
+    formatted_application_str = formatted_application_str.replace("APPLICATION_DATE", application_date_str)
+    
+    # Optional fields
+    if application["interview_date"] != "":
+        str_interview_date = "Interview: " + date.isoformat(application["interview_date"])
+    formatted_application_str = formatted_application_str.replace("INTERVIEW_DATE", str_interview_date)
+    
+    return formatted_application_str.strip()
+
+
 def format_application_full(application):
     formatted_application_str = FULL_APPLICATION
     
+    # Mandatory fields
     formatted_application_str = formatted_application_str.replace("ID_NUM", str(application["id"]))
     formatted_application_str = formatted_application_str.replace("POSITION_NAME", application["position"])
     formatted_application_str = formatted_application_str.replace("COMPANY_NAME", application["company"])
     formatted_application_str = formatted_application_str.replace("PRIORITY_NUM", str(application["priority"]))
     formatted_application_str = formatted_application_str.replace("CURRENT_STATUS", application["status"])
     formatted_application_str = formatted_application_str.replace("CONTACT_ADDRESS", application["contact"])
-    formatted_application_str = formatted_application_str.replace("URL_ADDRESS", application["url"])
-    formatted_application_str = formatted_application_str.replace("LOCATION_ADDRESS", application["location"])
-    formatted_application_str = formatted_application_str.replace("FULL_DESCRIPTION", application["description"])
-    formatted_application_str = formatted_application_str.replace("FULL_NOTES", application["notes"])
     
-    # prepare formatting
-    formatted_application_str = formatted_application_str.replace("APPLICATION_DATE", application["application_date"])
-    formatted_application_str = formatted_application_str.replace("INTERVIEW_DATE", application["interview_date"])
+    application_date_str = date.isoformat(application["application_date"])
+    formatted_application_str = formatted_application_str.replace("APPLICATION_DATE", application_date_str)
     
-    return formatted_application_str
+    # Optional fields
+    str_interview_date = ""
+    if application["interview_date"] != "":
+        str_interview_date = "| Interview: " + date.isoformat(application["interview_date"])
+    formatted_application_str = formatted_application_str.replace("INTERVIEW_DATE", str_interview_date)
+    
+    str_url = ""
+    if application["url"] != "":
+        str_url = "| Url: " + application["url"]
+    formatted_application_str = formatted_application_str.replace("URL_ADDRESS", str_url)
+    
+    str_location = ""
+    if application["location"] != "":
+        str_location = "| Location: " + application["location"]
+    formatted_application_str = formatted_application_str.replace("LOCATION_ADDRESS", str_location)
+    
+    str_description = ""
+    if application["description"] != "":
+        str_description = "Description: \n" + application["description"]
+    formatted_application_str = formatted_application_str.replace("FULL_DESCRIPTION", str_description)
+    
+    str_notes = ""
+    if application["notes"] != "":
+        str_notes = "Notes: \n" + application["notes"]
+    formatted_application_str = formatted_application_str.replace("FULL_NOTES", str_notes)
+    
+    return formatted_application_str.strip()
 
 # shows an overview of all applications
 # with Position, Status, Priority, Company, Application and interview dates
-def show_applications(applications):
+def display_applications(applications):
     formatted_applications = []
     
     for application in applications:
@@ -236,7 +286,7 @@ def sort_by_priority(applications):
 
 # MAIN
 def main(applications_file_path):
-    # print("Commands:")
+    print("Commands:")
     pass
 
 
