@@ -12,5 +12,11 @@ contact_list/contacts.json
 student_performance/students
 application.py
 applications.json
+test.py
 .env
 .vscode
+instance
+blog.db
+users.db
+top-movies.db
+__pycache__

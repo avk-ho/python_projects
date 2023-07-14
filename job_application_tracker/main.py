@@ -8,8 +8,6 @@ APPLICATIONS_FILE_PATH = "applications.json"
 NON_EDITABLE_VALUES = ["id", "application_date"]
 
 # FILE MODIFICATIONS
-
-
 def read_applications(file_path):
     try:
         with open(file_path, "r") as file:
@@ -183,12 +181,6 @@ def is_valid_interview_date(interview_date_str, application_date_str):
         return True
     else:
         return False
-
-    # application date more recent than interview date
-    if interview_date < application_date:
-        return False
-
-    return True
 
 
 def is_different_application(applications, new_application):
@@ -371,8 +363,6 @@ def format_application_full(application):
 
 # shows an overview of all applications
 # with Position, Status, Priority, Company, Application and interview dates
-
-
 def list_applications(applications):
     formatted_applications = []
 

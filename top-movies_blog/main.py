@@ -5,13 +5,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, IntegerField, FloatField
 from wtforms.validators import DataRequired
+from dotenv import load_dotenv
 import requests
+import os
 
-TMBD_API_KEY = "KEY"
+load_dotenv()
+TMBD_API_KEY = os.getenv("TMBD_API_KEY")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'KEY'
 Bootstrap(app)
+
+app.app_context().push()
 
 # Setting up the database
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///top-movies.db"
@@ -47,7 +52,7 @@ class Movie(db.Model):
 # Creating the edit rating/review form
 class EditRatingReviewForm(FlaskForm):
     new_rating = FloatField(label="Your rating out of 10 (ex: 7.8)", validators=[DataRequired()])
-    new_review = StringField(label="Your new review (optionnal)")
+    new_review = StringField(label="Your new review (optional)")
     submit = SubmitField("Done")
 
 # Creating the add movie form
@@ -85,6 +90,8 @@ def add_movie():
         response = requests.get(url=tmdb_request_url, params=parameters)
         data = response.json()
 
+        print(data)
+        print(TMBD_API_KEY)
         movies_data = data["results"]
 
         

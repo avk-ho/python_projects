@@ -9,15 +9,19 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from flask_gravatar import Gravatar
 from functools import wraps
-
+from dotenv import load_dotenv
 import os
-SECRET_KEY = os.environ.get("SECRET_KEY")
+
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
 ckeditor = CKEditor(app)
 Bootstrap(app)
 gravatar = Gravatar(app)
+
+app.app_context().push()
 
 ##USER AUTHENTICATION
 login_manager = LoginManager()
@@ -94,7 +98,7 @@ class Comment(db.Model):
     # Many to One (BlogPost)
     blogpost_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
 
-# db.create_all()
+db.create_all()
 
 
 ##ROUTES

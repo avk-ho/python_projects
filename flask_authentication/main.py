@@ -2,9 +2,11 @@ from flask import Flask, render_template, request, url_for, redirect, flash, sen
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-
+from dotenv import load_dotenv
 import os
-SECRET_KEY = os.environ.get("SECRET_KEY")
+
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 app = Flask(__name__)
 
@@ -12,6 +14,8 @@ app.config['SECRET_KEY'] = SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+app.app_context().push()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -36,7 +40,7 @@ class User(UserMixin, db.Model):
         return super().get_id()
 
 #Line below only required once, when creating DB. 
-# db.create_all()
+db.create_all()
 
 
 @app.route('/')
